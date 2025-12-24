@@ -39,6 +39,7 @@
         .status-pending { background: #FFF4E5; color: #FA591D; }
         .status-paid { background: #E5F9F6; color: #00A79D; }
         .status-shipped { background: #EBF5F9; color: #0A5F7F; }
+        .status-delivered { background: #E5F9F6; color: #00A79D; }
         
         .card-body { padding: 16px; display: flex; align-items: flex-start; gap: 16px; }
         .product-thumb { width: 80px; height: 80px; background: #EBF5F9; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 30px; }
@@ -65,24 +66,10 @@
 
     <nav class="navbar">
         <div class="nav-container">
-            <div class="logo-section" style="
-                    display: flex;
-                    align-items: center;
-                    gap: 8px;
-                ">
-                    <img src="${pageContext.request.contextPath}/uploads/seaamo.svg"
-                    alt="SeaAmo Logo"
-                    style="width:36px;">
-
-                    <span style="
-                        font-size: 18px;
-                        font-weight: 600;
-                        line-height: 1;
-                        white-space: nowrap;
-                    ">
-                        SeaAmo
-                    </span>
-                </div>
+            <div class="logo-section" style="display: flex; align-items: center; gap: 8px;">
+                <img src="${pageContext.request.contextPath}/uploads/seaamo.svg" alt="SeaAmo Logo" style="width:36px;">
+                <span style="font-size: 18px; font-weight: 600; line-height: 1; white-space: nowrap;">SeaAmo</span>
+            </div>
             <a href="<%= contextPath %>/customer/dashboard.jsp" class="nav-link">Kembali ke Beranda</a>
         </div>
     </nav>
@@ -110,9 +97,16 @@
                         <span>INV/${order.orderId}</span>
                     </div>
                     
-                    <span class="status-badge status-${order.paymentStatus == 'paid' ? 'paid' : 'pending'}">
+                    <%-- Updated Status Logic --%>
+                    <span class="status-badge 
+                        ${order.status == 'delivered' ? 'status-delivered' : 
+                          order.status == 'shipped' ? 'status-shipped' : 
+                          order.paymentStatus == 'paid' ? 'status-paid' : 'status-pending'}">
+                        
                         <c:choose>
-                            <c:when test="${order.paymentStatus == 'paid'}">Berhasil</c:when>
+                            <c:when test="${order.status == 'delivered'}">Selesai</c:when>
+                            <c:when test="${order.status == 'shipped'}">Dikirim</c:when>
+                            <c:when test="${order.paymentStatus == 'paid'}">Pembayaran Berhasil</c:when>
                             <c:otherwise>Menunggu Pembayaran</c:otherwise>
                         </c:choose>
                     </span>
@@ -140,7 +134,9 @@
 
                 <div class="card-footer">
                     <a href="<%= contextPath %>/order/detail?orderId=${order.orderId}" class="btn btn-ghost">Lihat Detail Transaksi</a>
-                    <c:if test="${order.paymentStatus != 'paid'}">
+                    
+                    <%-- Only show 'Bayar Sekarang' if payment is pending --%>
+                    <c:if test="${order.paymentStatus != 'paid' && order.status != 'cancelled'}">
                          <a href="<%= contextPath %>/payment?orderId=${order.orderId}" class="btn btn-primary">Bayar Sekarang</a>
                     </c:if>
                 </div>

@@ -7,7 +7,6 @@ import dao.PaymentDAO;
 import model.Order;
 import model.OrderItem;
 import model.Cart;
-import model.Product;
 import model.PaymentRecord;
 import service.NotificationService;
 import java.io.IOException;
@@ -31,7 +30,6 @@ public class OrderServlet extends HttpServlet {
     
     @Override
     public void init() throws ServletException {
-        // Asumsi DAO dan Service sudah diinisialisasi
         orderDAO = new OrderDAO();
         cartDAO = new CartDAO();
         productDAO = new ProductDAO();
@@ -44,7 +42,6 @@ public class OrderServlet extends HttpServlet {
             throws ServletException, IOException {
         String path = request.getServletPath();
         
-        // Handle new routes
         if ("/order/detail".equals(path)) {
             showOrderDetail(request, response);
             return;
@@ -53,7 +50,6 @@ public class OrderServlet extends HttpServlet {
             return;
         }
         
-        // Handle old routes with action parameter
         String action = request.getParameter("action");
         
         if (action == null) {
@@ -65,7 +61,6 @@ public class OrderServlet extends HttpServlet {
                 viewMyOrders(request, response);
                 break;
             case "view":
-                // viewOrderDetail(request, response); // Deprecated, use /order/detail
                 showOrderDetail(request, response);
                 break;
             case "checkout":
@@ -84,13 +79,11 @@ public class OrderServlet extends HttpServlet {
             throws ServletException, IOException {
         String path = request.getServletPath();
         
-        // Handle cancel order
         if ("/order/cancel".equals(path)) {
             cancelOrder(request, response);
             return;
         }
         
-        // Handle old routes with action parameter
         String action = request.getParameter("action");
         
         if (action == null) {
@@ -109,8 +102,6 @@ public class OrderServlet extends HttpServlet {
         }
     }
     
-    // ===== NEW METHODS FOR ORDER DETAIL =====
-    
     private void showOrderDetail(HttpServletRequest request, HttpServletResponse response) 
             throws ServletException, IOException {
         HttpSession session = request.getSession();
@@ -128,20 +119,17 @@ public class OrderServlet extends HttpServlet {
             
             if (order == null) {
                 request.setAttribute("error", "Pesanan tidak ditemukan");
-                response.sendRedirect(request.getContextPath() + "/order?action=myOrders"); // Perbaikan: Redirect ke Servlet
+                response.sendRedirect(request.getContextPath() + "/order?action=myOrders");
                 return;
             }
             
-            // Check authorization based on role
             boolean hasAccess = false;
             
             if ("customer".equals(role) && order.getCustomerId() == userId) {
                 hasAccess = true;
             } else if ("fisherman".equals(role)) {
-                // Check if fisherman has products in this order
                 List<OrderItem> items = orderDAO.getOrderItems(orderId);
                 for (OrderItem item : items) {
-                    // Asumsi OrderItem memiliki fishermanId
                     if (item.getFishermanId() == userId) { 
                         hasAccess = true;
                         break;
@@ -153,14 +141,11 @@ public class OrderServlet extends HttpServlet {
             
             if (!hasAccess) {
                 request.setAttribute("error", "Anda tidak memiliki akses ke pesanan ini");
-                response.sendRedirect(request.getContextPath() + "/order?action=myOrders"); // Perbaikan: Redirect ke Servlet
+                response.sendRedirect(request.getContextPath() + "/order?action=myOrders");
                 return;
             }
             
-            // Get order items
             List<OrderItem> orderItems = orderDAO.getOrderItems(orderId);
-            
-            // Get payment info
             PaymentRecord payment = paymentDAO.getPaymentByOrderId(orderId);
             
             request.setAttribute("order", order);
@@ -170,11 +155,11 @@ public class OrderServlet extends HttpServlet {
             request.getRequestDispatcher("/orderDetail.jsp").forward(request, response);
             
         } catch (NumberFormatException e) {
-            response.sendRedirect(request.getContextPath() + "/order?action=myOrders"); // Perbaikan: Redirect ke Servlet
+            response.sendRedirect(request.getContextPath() + "/order?action=myOrders");
         } catch (Exception e) {
             e.printStackTrace();
             request.setAttribute("error", "Terjadi kesalahan: " + e.getMessage());
-            response.sendRedirect(request.getContextPath() + "/order?action=myOrders"); // Perbaikan: Redirect ke Servlet
+            response.sendRedirect(request.getContextPath() + "/order?action=myOrders");
         }
     }
     
@@ -193,7 +178,7 @@ public class OrderServlet extends HttpServlet {
             Order order = orderDAO.getOrderById(orderId);
             
             if (order == null || order.getCustomerId() != userId) {
-                response.sendRedirect(request.getContextPath() + "/order?action=myOrders"); // Perbaikan: Redirect ke Servlet
+                response.sendRedirect(request.getContextPath() + "/order?action=myOrders");
                 return;
             }
             
@@ -202,7 +187,7 @@ public class OrderServlet extends HttpServlet {
             
         } catch (Exception e) {
             e.printStackTrace();
-            response.sendRedirect(request.getContextPath() + "/order?action=myOrders"); // Perbaikan: Redirect ke Servlet
+            response.sendRedirect(request.getContextPath() + "/order?action=myOrders");
         }
     }
     
@@ -221,17 +206,15 @@ public class OrderServlet extends HttpServlet {
             Order order = orderDAO.getOrderById(orderId);
             
             if (order == null || order.getCustomerId() != userId) {
-                response.sendRedirect(request.getContextPath() + "/order?action=myOrders"); // Perbaikan: Redirect ke Servlet
+                response.sendRedirect(request.getContextPath() + "/order?action=myOrders");
                 return;
             }
             
-            // Only allow cancellation for certain statuses
             if ("pending".equals(order.getStatus()) || 
                 ("processing".equals(order.getStatus()) && "unpaid".equals(order.getPaymentStatus()))) {
                 
                 orderDAO.updateOrderStatus(orderId, "cancelled");
                 
-                // Restore product stock
                 List<OrderItem> items = orderDAO.getOrderItems(orderId);
                 for (OrderItem item : items) {
                     productDAO.updateStock(item.getProductId(), item.getQuantity());
@@ -247,11 +230,9 @@ public class OrderServlet extends HttpServlet {
         } catch (Exception e) {
             e.printStackTrace();
             request.setAttribute("error", "Terjadi kesalahan: " + e.getMessage());
-            response.sendRedirect(request.getContextPath() + "/order?action=myOrders"); // Perbaikan: Redirect ke Servlet
+            response.sendRedirect(request.getContextPath() + "/order?action=myOrders");
         }
     }
-    
-    // ===== EXISTING METHODS =====
     
     private void showCheckout(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
@@ -263,7 +244,6 @@ public class OrderServlet extends HttpServlet {
             return;
         }
         
-        // Asumsi getCartByCustomer juga mengambil data Product untuk subtotal
         List<Cart> cartItems = cartDAO.getCartByCustomer(userId);
         
         if (cartItems.isEmpty()) {
@@ -298,7 +278,6 @@ public class OrderServlet extends HttpServlet {
             return;
         }
         
-        // Get cart items
         List<Cart> cartItems = cartDAO.getCartByCustomer(userId);
         
         if (cartItems.isEmpty()) {
@@ -306,13 +285,11 @@ public class OrderServlet extends HttpServlet {
             return;
         }
         
-        // Calculate total
         double totalAmount = 0;
         for (Cart item : cartItems) {
             totalAmount += item.calculateSubtotal();
         }
         
-        // Create order
         Order order = new Order();
         order.setCustomerId(userId);
         order.setTotalAmount(totalAmount);
@@ -323,14 +300,12 @@ public class OrderServlet extends HttpServlet {
         int orderId = orderDAO.createOrder(order);
         
         if (orderId > 0) {
-            // Create order items
             Set<Integer> fishermanIds = new HashSet<>();
             
             for (Cart cartItem : cartItems) {
                 OrderItem orderItem = new OrderItem();
                 orderItem.setOrderId(orderId);
                 orderItem.setProductId(cartItem.getProductId());
-                // Asumsi getProduct().getFishermanId() tersedia di objek Cart
                 orderItem.setFishermanId(cartItem.getProduct().getFishermanId()); 
                 orderItem.setQuantity(cartItem.getQuantity());
                 orderItem.setPrice(cartItem.getProduct().getPrice());
@@ -338,23 +313,18 @@ public class OrderServlet extends HttpServlet {
                 
                 orderDAO.insertOrderItem(orderItem);
                 
-                // Update product stock
                 productDAO.updateStock(cartItem.getProductId(), -cartItem.getQuantity());
                 
-                // Collect fisherman IDs
                 fishermanIds.add(cartItem.getProduct().getFishermanId());
             }
             
-            // Clear cart
             cartDAO.clearCart(userId);
             session.setAttribute("cartCount", 0);
             
-            // Send notifications to fishermen
             for (Integer fishermanId : fishermanIds) {
                 notificationService.notifyNewOrderToFisherman(fishermanId, orderId);
             }
             
-            // Redirect to payment
             response.sendRedirect(request.getContextPath() + "/payment?orderId=" + orderId);
         } else {
             response.sendRedirect(request.getContextPath() + "/order?action=checkout&error=create");
@@ -365,7 +335,6 @@ public class OrderServlet extends HttpServlet {
             throws ServletException, IOException {
         HttpSession session = request.getSession();
         Integer userId = (Integer) session.getAttribute("userId");
-        String role = (String) session.getAttribute("role");
         
         if (userId == null) {
             response.sendRedirect(request.getContextPath() + "/login.jsp");
@@ -375,15 +344,7 @@ public class OrderServlet extends HttpServlet {
         List<Order> orders = orderDAO.getOrdersByCustomer(userId);
         request.setAttribute("orders", orders);
         
-        // Karena myOrders.jsp ada di folder customer/
         request.getRequestDispatcher("/customer/myOrders.jsp").forward(request, response);
-    }
-    
-    // viewOrderDetail yang lama (berdasarkan action=view)
-    private void viewOrderDetail(HttpServletRequest request, HttpServletResponse response)
-            throws ServletException, IOException {
-        // Disarankan menggunakan showOrderDetail yang baru (/order/detail)
-        showOrderDetail(request, response);
     }
     
     private void viewFishermanOrders(HttpServletRequest request, HttpServletResponse response)
@@ -423,7 +384,6 @@ public class OrderServlet extends HttpServlet {
             boolean success = orderDAO.updateOrderStatus(orderId, newStatus);
             
             if (success) {
-                // Send notification
                 notificationService.notifyOrderStatusChanged(order, oldStatus, newStatus);
                 
                 if ("fisherman".equals(role)) {
@@ -440,4 +400,6 @@ public class OrderServlet extends HttpServlet {
             response.sendRedirect(request.getContextPath() + "/order?action=myOrders&error=update");
         }
     }
+    
+    
 }

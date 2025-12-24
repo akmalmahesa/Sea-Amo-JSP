@@ -58,7 +58,35 @@
         .username { font-size: 14px; font-weight: 600; color: var(--text-dark); white-space: nowrap; max-width: 120px; overflow: hidden; text-overflow: ellipsis; }
 
         .main-container { max-width: 1200px; margin: 24px auto; padding: 0 16px; }
+        
+        
+        .hero-section {
+            position: relative;
+            height: 400px;
+            overflow: hidden;
+        }
 
+        .hero-bg {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .hero-content {
+            position: relative;
+            z-index: 2;
+            color: white;
+            text-align: center;
+        }
+        .hero-section::before {
+            background: linear-gradient(
+                to bottom,
+                rgba(0,0,0,0.6),
+                rgba(0,0,0,0.2)
+            );
+        }
+        
         .hero-section { margin-bottom: 24px; border-radius: 12px; overflow: hidden; box-shadow: var(--shadow-sm); position: relative; height: 300px; background: linear-gradient(135deg, #0A5F7F, #2196F3); display: flex; align-items: center; justify-content: center; color: white; text-align: center; }
         .hero-content h1 { font-size: 32px; margin-bottom: 12px; }
         .hero-content p { font-size: 16px; opacity: 0.9; max-width: 600px; margin: 0 auto; }
@@ -156,16 +184,15 @@
     <div class="main-container">
         
         <div class="hero-section">
+            <img src="${pageContext.request.contextPath}/uploads/seafood-background.jpg" class="hero-bg">
+
             <div class="hero-content">
                 <h1>Tangkapan Segar Hari Ini 🎣</h1>
                 <p>Langsung dari nelayan lokal ke dapur Anda dengan kualitas terbaik.</p>
             </div>
-            <div class="hero-dots">
-                <div class="dot active"></div>
-                <div class="dot"></div>
-                <div class="dot"></div>
-            </div>
         </div>
+
+
 
         <div class="categories-wrapper">
             <h3 class="section-title">Kategori Pilihan</h3>

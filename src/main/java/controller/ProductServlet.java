@@ -211,8 +211,7 @@ public class ProductServlet extends HttpServlet {
                     }
                 }
             }
-            // Jika user tidak mengubah gambar (input kosong), gambar lama tetap tersimpan di existingProduct
-            // -----------------------------
+
             
             boolean success = productDAO.updateProduct(existingProduct);
             
@@ -263,9 +262,6 @@ public class ProductServlet extends HttpServlet {
         try (InputStream input = filePart.getInputStream()) {
             Files.copy(input, Paths.get(filePath), StandardCopyOption.REPLACE_EXISTING);
         }
-        
-        // Kembalikan path relatif (contoh: "uploads/1238123_ikan.jpg")
-        // .replace agar path separator konsisten menjadi "/" untuk URL web
         return UPLOAD_DIR + "/" + uniqueFileName;
     }
     

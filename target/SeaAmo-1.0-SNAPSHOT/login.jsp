@@ -268,7 +268,7 @@
         </div>
         
         <div class="footer-text">
-            © 2024 SeaAmo. All rights reserved.
+            © 2025 SeaAmo. All rights reserved.
         </div>
     </div>
 </body>

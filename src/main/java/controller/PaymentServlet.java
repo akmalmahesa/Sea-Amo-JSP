@@ -124,7 +124,7 @@ public class PaymentServlet extends HttpServlet {
             boolean paymentSuccess = payment.processPayment(order.getTotalAmount());
             
             if (paymentSuccess) {
-                // Save payment record
+                // 1. Save payment record
                 PaymentRecord paymentRecord = new PaymentRecord();
                 paymentRecord.setOrderId(orderId);
                 paymentRecord.setPaymentMethod(payment.getPaymentMethod());
@@ -134,17 +134,17 @@ public class PaymentServlet extends HttpServlet {
                 
                 paymentDAO.insertPayment(paymentRecord);
                 
-                // Update order status
+                // 2. Update order status (Shipping Status)
                 orderDAO.updateOrderStatus(orderId, "processing");
                 
-                // Update order payment status
-                Order updatedOrder = orderDAO.getOrderById(orderId);
-                updatedOrder.setPaymentStatus("paid");
+                // 3. Update order payment status (CRITICAL FIX)
+                // We must call the DAO to update the database, not just set the java object
+                orderDAO.updatePaymentStatus(orderId, "paid");
                 
-                // Send notifications
+                // 4. Send notifications
                 notificationService.notifyPaymentReceived(userId, orderId, order.getTotalAmount());
                 
-                // Redirect to success page
+                // 5. Redirect to success page
                 session.setAttribute("paymentSuccess", true);
                 response.sendRedirect("paymentSuccess.jsp?orderId=" + orderId);
                 

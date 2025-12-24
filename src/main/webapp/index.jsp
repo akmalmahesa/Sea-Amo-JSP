@@ -528,10 +528,9 @@
             
             <ul class="nav-menu">
                 <li><a href="index.jsp">Home</a></li>
-                <li><a href="product?action=list">Shop</a></li>
+                <li><a href="<%= request.getContextPath() %>/login.jsp">Shop</a></li>
                 <li><a href="#categories">Categories</a></li>
-                <li><a href="#about">About Us</a></li>
-                <li><a href="#contact">Contact</a></li>
+                <li><a href="#cta">Join Us</a></li>
             </ul>
             
             <div class="nav-actions">
@@ -564,7 +563,7 @@
                     </div>
                 </div>
                 
-                <a href="product?action=list" class="btn-primary">Shop Fresh Seafood</a>
+                <a href="<%= request.getContextPath() %>/login.jsp" class="btn-primary">Shop Fresh Seafood</a>
             </div>
             
             <div class="hero-image">
@@ -668,7 +667,7 @@
     </section>
     
     <!-- CTA -->
-    <section class="cta">
+    <section class="cta" id="cta">
         <h2>Ready to Get Started?</h2>
         <p>Join thousands of satisfied customers enjoying the freshest seafood delivered straight to their door</p>
         
@@ -718,7 +717,7 @@
         </div>
         
         <div class="footer-bottom">
-            <p>&copy; 2024 SeaAmo. All rights reserved. | Fresh Seafood Marketplace Indonesia 🇮🇩</p>
+            <p>&copy; 2025 SeaAmo. All rights reserved. | Fresh Seafood Marketplace Indonesia 🇮🇩</p>
         </div>
     </footer>
 </body>

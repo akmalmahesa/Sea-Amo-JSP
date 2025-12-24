@@ -5,6 +5,7 @@ dao\CartDAO.class
 controller\CourierServlet.class
 model\EWallet.class
 model\BankTransfer.class
+controller\FishermanServlet.class
 model\Product.class
 dao\UserDAO.class
 controller\PaymentServlet.class

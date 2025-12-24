@@ -29,7 +29,6 @@
         .card { background: var(--white); border-radius: 8px; padding: 24px; box-shadow: 0 1px 4px rgba(0,0,0,0.1); margin-bottom: 20px; }
         .card-title { font-weight: 700; font-size: 16px; margin-bottom: 16px; border-bottom: 1px solid #f0f0f0; padding-bottom: 12px; }
 
-        /* Product List Styles */
         .order-item { display: flex; gap: 16px; padding-bottom: 16px; margin-bottom: 16px; border-bottom: 1px dashed #E5E7E9; }
         .order-item:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
         .item-thumb { width: 70px; height: 70px; background: #EBF5F9; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 24px; flex-shrink: 0; object-fit: cover; }
@@ -39,7 +38,6 @@
         .item-qty { font-size: 13px; color: #666; }
         .item-total { font-weight: 700; color: var(--text-dark); text-align: right; }
 
-        /* Timeline Styles */
         .timeline { padding-left: 10px; border-left: 2px solid #E5E7E9; margin-left: 10px; margin-top: 10px; }
         .timeline-item { position: relative; padding-left: 20px; padding-bottom: 24px; }
         .timeline-item:last-child { padding-bottom: 0; }
@@ -49,7 +47,6 @@
         .timeline-time { font-size: 12px; color: #999; }
         .timeline-item.active .timeline-status { color: var(--primary); }
 
-        /* Status Badge */
         .status-badge { padding: 4px 12px; border-radius: 4px; font-size: 12px; font-weight: 700; background: #E5E7E9; color: var(--text-dark); text-transform: uppercase; }
         .status-paid { background: #E5F9F6; color: #00A79D; }
         .status-pending { background: #FFF4E5; color: #FA591D; }
@@ -64,35 +61,12 @@
 
     <nav class="navbar">
         <div class="nav-container">
-            <div class="logo-section" style="
-                display: flex;
-                align-items: center;
-                gap: 8px;
-            ">
-                <a href="${pageContext.request.contextPath}/customer/dashboard.jsp"
-                   style="
-                       display: flex;
-                       align-items: center;
-                       gap: 8px;
-                       text-decoration: none;
-                       color: inherit;
-                   ">
-
-                    <img src="${pageContext.request.contextPath}/uploads/seaamo.svg"
-                         alt="SeaAmo Logo"
-                         style="width:36px;">
-
-                    <span style="
-                        font-size: 18px;
-                        font-weight: 600;
-                        line-height: 1;
-                        white-space: nowrap;
-                    ">
-                        SeaAmo
-                    </span>
+            <div class="logo-section" style="display: flex; align-items: center; gap: 8px;">
+                <a href="${pageContext.request.contextPath}/customer/dashboard.jsp" style="display: flex; align-items: center; gap: 8px; text-decoration: none; color: inherit;">
+                    <img src="${pageContext.request.contextPath}/uploads/seaamo.svg" alt="SeaAmo Logo" style="width:36px;">
+                    <span style="font-size: 18px; font-weight: 600; line-height: 1; white-space: nowrap;">SeaAmo</span>
                 </a>
             </div>
-
             <div class="user-menu">
                 <a href="<%= contextPath %>/order?action=myOrders" style="text-decoration: none; font-weight: 600; color: var(--text-dark);">Pesanan Saya</a>
             </div>
@@ -105,7 +79,9 @@
             <a href="${pageContext.request.contextPath}/order?action=myOrders" class="back-link">← Kembali</a>
             <div>
                 <span style="color: #666; margin-right: 10px;">No. Pesanan <b>#${order.orderId}</b></span>
-                <span class="status-badge status-${order.status.toLowerCase() == 'paid' ? 'paid' : 'pending'}">${order.status}</span>
+                <span class="status-badge ${order.paymentStatus == 'paid' ? 'status-paid' : 'status-pending'}">
+                    ${order.paymentStatus == 'paid' ? 'Telah Dibayar' : 'Menunggu Pembayaran'}
+                </span>
             </div>
         </div>
 
@@ -114,11 +90,11 @@
                 <div class="card-title">Detail Produk</div>
                 <c:forEach items="${orderItems}" var="item">
                     <div class="order-item">
-                        <img src="${pageContext.request.contextPath}/assets/images/products/${item.product.image}" 
+                        <img src="${pageContext.request.contextPath}/assets/images/products/${item.productName}.jpg" 
                              onerror="this.src='${pageContext.request.contextPath}/assets/images/placeholder.jpg'"
                              class="item-thumb">
                         <div class="item-info">
-                            <div class="item-name">${item.product.name}</div>
+                            <div class="item-name">${item.productName}</div>
                             <div class="item-qty">${item.quantity} kg x Rp <fmt:formatNumber value="${item.price}" pattern="#,###" /></div>
                         </div>
                         <div class="item-total">
@@ -147,10 +123,10 @@
                     <div class="timeline-item active">
                         <div class="timeline-dot"></div>
                         <div class="timeline-status">Pesanan Dibuat</div>
-                        <div class="timeline-time"><fmt:formatDate value="${order.orderDate}" pattern="dd MMM yyyy, HH:mm" /></div>
+                        <div class="timeline-time"><fmt:formatDate value="${order.createdAt}" pattern="dd MMM yyyy, HH:mm" /></div>
                     </div>
                     
-                    <div class="timeline-item ${order.status == 'PAID' || order.status == 'SHIPPED' || order.status == 'DELIVERED' ? 'active' : ''}">
+                    <div class="timeline-item ${order.paymentStatus == 'paid' ? 'active' : ''}">
                         <div class="timeline-dot"></div>
                         <div class="timeline-status">Pembayaran Dikonfirmasi</div>
                         <div class="timeline-time">
@@ -160,19 +136,22 @@
                         </div>
                     </div>
                     
-                    <div class="timeline-item ${order.status == 'SHIPPED' || order.status == 'DELIVERED' ? 'active' : ''}">
+                    <div class="timeline-item ${order.status == 'shipped' || order.status == 'delivered' ? 'active' : ''}">
                         <div class="timeline-dot"></div>
                         <div class="timeline-status">Dalam Pengiriman</div>
                     </div>
                     
-                    <div class="timeline-item ${order.status == 'DELIVERED' ? 'active' : ''}">
+                    <div class="timeline-item ${order.status == 'delivered' ? 'active' : ''}">
                         <div class="timeline-dot"></div>
                         <div class="timeline-status">Pesanan Selesai</div>
                     </div>
                 </div>
 
-                <c:if test="${order.status == 'PENDING'}">
-                    <button onclick="cancelOrder(${order.orderId})" class="btn-action btn-cancel">Batalkan Pesanan</button>
+                <c:if test="${order.status == 'pending' && order.paymentStatus == 'unpaid'}">
+                    <form action="${pageContext.request.contextPath}/order/cancel" method="post" onsubmit="return confirm('Yakin batalkan pesanan ini?');">
+                        <input type="hidden" name="orderId" value="${order.orderId}">
+                        <button type="submit" class="btn-action btn-cancel">Batalkan Pesanan</button>
+                    </form>
                 </c:if>
             </div>
 
@@ -195,12 +174,5 @@
         </div>
     </div>
 
-    <script>
-        function cancelOrder(orderId) {
-            if (confirm('Yakin batalkan pesanan ini?')) {
-                // Logic pembatalan form submit
-            }
-        }
-    </script>
 </body>
 </html>

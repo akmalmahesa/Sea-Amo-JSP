@@ -9,6 +9,7 @@ import java.security.MessageDigest;
 
 public class UserDAO {
     
+    // Login hanya untuk user ACTIVE (User deleted tidak bisa login)
     public User login(String username, String password) {
         String hashedPassword = hashPassword(password);
         String sql = "SELECT * FROM users WHERE username = ? AND password = ? AND status = 'active'";
@@ -50,6 +51,35 @@ public class UserDAO {
         return false;
     }
     
+    // =========================================================================
+    // PERBAIKAN UTAMA: SOFT DELETE (Mengatasi Error Foreign Key)
+    // =========================================================================
+    public boolean deleteUser(int userId) {
+        // Kita tidak DELETE, tapi UPDATE status jadi 'deleted'
+        // Kita juga ubah username/email agar jika user daftar lagi tidak duplicate entry
+        String sql = "UPDATE users SET status = 'deleted', " +
+                     "username = CONCAT(username, '_deleted_', ?), " +
+                     "email = CONCAT(email, '_deleted_', ?) " +
+                     "WHERE user_id = ?";
+
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            // Gunakan String valueOf untuk keamanan kompatibilitas SQL
+            String timestamp = String.valueOf(System.currentTimeMillis());
+
+            stmt.setString(1, timestamp); // Tambah timestamp ke username
+            stmt.setString(2, timestamp); // Tambah timestamp ke email
+            stmt.setInt(3, userId);
+
+            return stmt.executeUpdate() > 0;
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
+    // =========================================================================
+
     public User getUserById(int userId) {
         String sql = "SELECT * FROM users WHERE user_id = ?";
         
@@ -155,20 +185,6 @@ public class UserDAO {
         return false;
     }
     
-    public boolean deleteUser(int userId) {
-        String sql = "DELETE FROM users WHERE user_id = ?";
-        
-        try (Connection conn = DBConnection.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
-            
-            stmt.setInt(1, userId);
-            return stmt.executeUpdate() > 0;
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-        return false;
-    }
-    
     public boolean isUsernameExists(String username) {
         String sql = "SELECT COUNT(*) FROM users WHERE username = ?";
         
@@ -192,20 +208,11 @@ public class UserDAO {
         User user;
         
         switch (role) {
-            case "fisherman":
-                user = new Fisherman();
-                break;
-            case "customer":
-                user = new Customer();
-                break;
-            case "courier":
-                user = new Courier();
-                break;
-            case "admin":
-                user = new Admin();
-                break;
-            default:
-                user = new Customer(); // default
+            case "fisherman": user = new Fisherman(); break;
+            case "customer": user = new Customer(); break;
+            case "courier": user = new Courier(); break;
+            case "admin": user = new Admin(); break;
+            default: user = new Customer();
         }
         
         user.setUserId(rs.getInt("user_id"));

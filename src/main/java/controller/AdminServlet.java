@@ -28,21 +28,27 @@ public class AdminServlet extends HttpServlet {
         orderDAO = new OrderDAO();
     }
     
+    // Helper method untuk cek login admin
+    private boolean isAdmin(HttpServletRequest request) {
+        HttpSession session = request.getSession(false); // false = jangan buat session baru jika tidak ada
+        if (session == null) return false;
+        
+        String role = (String) session.getAttribute("role");
+        return "admin".equals(role);
+    }
+    
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
-        
-        // Check admin authorization
+            
+        // 1. Cek Admin Authorization
         if (!isAdmin(request)) {
-            response.sendRedirect("login.jsp");
+            response.sendRedirect(request.getContextPath() + "/login.jsp");
             return;
         }
         
         String action = request.getParameter("action");
-        
-        if (action == null) {
-            action = "dashboard";
-        }
+        if (action == null) action = "dashboard";
         
         switch (action) {
             case "dashboard":
@@ -69,14 +75,13 @@ public class AdminServlet extends HttpServlet {
     protected void doPost(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
         
-        // Check admin authorization
+        // 1. Cek Admin Authorization
         if (!isAdmin(request)) {
-            response.sendRedirect("login.jsp");
+            response.sendRedirect(request.getContextPath() + "/login.jsp");
             return;
         }
         
         String action = request.getParameter("action");
-        
         if (action == null) {
             showDashboard(request, response);
             return;
@@ -97,23 +102,51 @@ public class AdminServlet extends HttpServlet {
         }
     }
     
-    private boolean isAdmin(HttpServletRequest request) {
-        HttpSession session = request.getSession();
-        String role = (String) session.getAttribute("role");
-        return "admin".equals(role);
+    // =========================================================================
+    // LOGIC DELETE USER (PERBAIKAN UTAMA: REDIRECT PATH)
+    // =========================================================================
+    private void deleteUser(HttpServletRequest request, HttpServletResponse response)
+        throws ServletException, IOException {
+    
+        try {
+            int userId = Integer.parseInt(request.getParameter("id"));
+
+            // Cek agar tidak menghapus sesama admin
+            User user = userDAO.getUserById(userId);
+            if (user != null && "admin".equals(user.getRole())) {
+                response.sendRedirect(request.getContextPath() + "/admin?action=users&error=cannotDelete");
+                return;
+            }
+
+            // Panggil Soft Delete di DAO
+            boolean success = userDAO.deleteUser(userId);
+
+            if (success) {
+                // Redirect menggunakan getContextPath() agar TIDAK 404
+                response.sendRedirect(request.getContextPath() + "/admin?action=users&success=deleted");
+            } else {
+                response.sendRedirect(request.getContextPath() + "/admin?action=users&error=delete");
+            }
+        } catch (NumberFormatException e) {
+            response.sendRedirect(request.getContextPath() + "/admin?action=users&error=invalid");
+        } catch (Exception e) {
+            e.printStackTrace();
+            response.sendRedirect(request.getContextPath() + "/admin?action=users&error=system");
+        }
     }
+
+    // =========================================================================
+    // METODE VIEW & UPDATE LAINNYA
+    // =========================================================================
     
     private void showDashboard(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
-        
-        // Get statistics
         List<User> allUsers = userDAO.getAllUsers();
         List<Product> allProducts = productDAO.getAllProducts();
         List<Order> allOrders = orderDAO.getAllOrders();
         
-        int totalUsers = allUsers.size();
-        int totalProducts = allProducts.size();
-        int totalOrders = allOrders.size();
+        // Filter: Hitung total user aktif (tidak termasuk deleted)
+        long activeUsers = allUsers.stream().filter(u -> !"deleted".equals(u.getStatus())).count();
         
         // Count by role
         int fishermanCount = 0;
@@ -121,53 +154,43 @@ public class AdminServlet extends HttpServlet {
         int courierCount = 0;
         
         for (User user : allUsers) {
-            switch (user.getRole()) {
-                case "fisherman":
-                    fishermanCount++;
-                    break;
-                case "customer":
-                    customerCount++;
-                    break;
-                case "courier":
-                    courierCount++;
-                    break;
-            }
+            if ("deleted".equals(user.getStatus())) continue; // Skip deleted users
+            
+            if ("fisherman".equals(user.getRole())) fishermanCount++;
+            else if ("customer".equals(user.getRole())) customerCount++;
+            else if ("courier".equals(user.getRole())) courierCount++;
         }
         
         // Count pending products
         int pendingProducts = 0;
         for (Product product : allProducts) {
-            if ("pending".equals(product.getStatus())) {
-                pendingProducts++;
-            }
+            if ("pending".equals(product.getStatus())) pendingProducts++;
         }
         
-        // Calculate total revenue
+        // Calculate revenue
         double totalRevenue = 0;
         for (Order order : allOrders) {
-            if ("delivered".equals(order.getStatus())) {
-                totalRevenue += order.getTotalAmount();
-            }
+            if ("delivered".equals(order.getStatus())) totalRevenue += order.getTotalAmount();
         }
         
-        request.setAttribute("totalUsers", totalUsers);
-        request.setAttribute("totalProducts", totalProducts);
-        request.setAttribute("totalOrders", totalOrders);
+        request.setAttribute("totalUsers", activeUsers); // Update variabel ini
+        request.setAttribute("totalProducts", allProducts.size());
+        request.setAttribute("totalOrders", allOrders.size());
         request.setAttribute("fishermanCount", fishermanCount);
         request.setAttribute("customerCount", customerCount);
         request.setAttribute("courierCount", courierCount);
         request.setAttribute("pendingProducts", pendingProducts);
         request.setAttribute("totalRevenue", totalRevenue);
         
-        // Recent data
-        request.setAttribute("recentOrders", allOrders.subList(0, Math.min(10, allOrders.size())));
+        // Safe sublist for recent orders
+        int maxOrders = Math.min(10, allOrders.size());
+        request.setAttribute("recentOrders", allOrders.subList(0, maxOrders));
         
         request.getRequestDispatcher("admin/dashboard.jsp").forward(request, response);
     }
     
     private void manageUsers(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
-        
         String roleFilter = request.getParameter("role");
         List<User> users;
         
@@ -179,44 +202,34 @@ public class AdminServlet extends HttpServlet {
         
         request.setAttribute("users", users);
         request.setAttribute("roleFilter", roleFilter);
-        
         request.getRequestDispatcher("admin/users.jsp").forward(request, response);
     }
     
     private void manageProducts(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
-        
         String statusFilter = request.getParameter("status");
-        List<Product> products;
+        List<Product> products = productDAO.getAllProducts();
         
         if ("pending".equals(statusFilter)) {
-            products = productDAO.getAllProducts();
             products.removeIf(p -> !"pending".equals(p.getStatus()));
         } else if (statusFilter != null && !statusFilter.isEmpty()) {
-            products = productDAO.getAllProducts();
             products.removeIf(p -> !statusFilter.equals(p.getStatus()));
-        } else {
-            products = productDAO.getAllProducts();
         }
         
         request.setAttribute("products", products);
         request.setAttribute("statusFilter", statusFilter);
-        
         request.getRequestDispatcher("admin/products.jsp").forward(request, response);
     }
     
     private void manageOrders(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
-        
         List<Order> orders = orderDAO.getAllOrders();
         request.setAttribute("orders", orders);
-        
         request.getRequestDispatcher("admin/orders.jsp").forward(request, response);
     }
     
     private void updateUserStatus(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
-        
         try {
             int userId = Integer.parseInt(request.getParameter("userId"));
             String status = request.getParameter("status");
@@ -224,18 +237,17 @@ public class AdminServlet extends HttpServlet {
             boolean success = userDAO.updateStatus(userId, status);
             
             if (success) {
-                response.sendRedirect("admin?action=users&success=updated");
+                response.sendRedirect(request.getContextPath() + "/admin?action=users&success=updated");
             } else {
-                response.sendRedirect("admin?action=users&error=update");
+                response.sendRedirect(request.getContextPath() + "/admin?action=users&error=update");
             }
         } catch (NumberFormatException e) {
-            response.sendRedirect("admin?action=users&error=invalid");
+            response.sendRedirect(request.getContextPath() + "/admin?action=users&error=invalid");
         }
     }
     
     private void updateProductStatus(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
-        
         try {
             int productId = Integer.parseInt(request.getParameter("productId"));
             String status = request.getParameter("status");
@@ -243,18 +255,17 @@ public class AdminServlet extends HttpServlet {
             boolean success = productDAO.updateStatus(productId, status);
             
             if (success) {
-                response.sendRedirect("admin?action=products&success=updated");
+                response.sendRedirect(request.getContextPath() + "/admin?action=products&success=updated");
             } else {
-                response.sendRedirect("admin?action=products&error=update");
+                response.sendRedirect(request.getContextPath() + "/admin?action=products&error=update");
             }
         } catch (NumberFormatException e) {
-            response.sendRedirect("admin?action=products&error=invalid");
+            response.sendRedirect(request.getContextPath() + "/admin?action=products&error=invalid");
         }
     }
     
     private void updateOrderStatus(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
-        
         try {
             int orderId = Integer.parseInt(request.getParameter("orderId"));
             String status = request.getParameter("status");
@@ -262,37 +273,12 @@ public class AdminServlet extends HttpServlet {
             boolean success = orderDAO.updateOrderStatus(orderId, status);
             
             if (success) {
-                response.sendRedirect("admin?action=orders&success=updated");
+                response.sendRedirect(request.getContextPath() + "/admin?action=orders&success=updated");
             } else {
-                response.sendRedirect("admin?action=orders&error=update");
+                response.sendRedirect(request.getContextPath() + "/admin?action=orders&error=update");
             }
         } catch (NumberFormatException e) {
-            response.sendRedirect("admin?action=orders&error=invalid");
-        }
-    }
-    
-    private void deleteUser(HttpServletRequest request, HttpServletResponse response)
-            throws ServletException, IOException {
-        
-        try {
-            int userId = Integer.parseInt(request.getParameter("id"));
-            
-            // Don't allow deleting admin
-            User user = userDAO.getUserById(userId);
-            if (user != null && "admin".equals(user.getRole())) {
-                response.sendRedirect("admin?action=users&error=cannotDelete");
-                return;
-            }
-            
-            boolean success = userDAO.deleteUser(userId);
-            
-            if (success) {
-                response.sendRedirect("admin?action=users&success=deleted");
-            } else {
-                response.sendRedirect("admin?action=users&error=delete");
-            }
-        } catch (NumberFormatException e) {
-            response.sendRedirect("admin?action=users&error=invalid");
+            response.sendRedirect(request.getContextPath() + "/admin?action=orders&error=invalid");
         }
     }
 }

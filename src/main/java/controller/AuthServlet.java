@@ -67,7 +67,6 @@ public class AuthServlet extends HttpServlet {
             session.setAttribute("role", user.getRole());
             session.setAttribute("fullName", user.getFullName());
             
-            // PERBAIKAN: Menggunakan role dan Context Path untuk redirect yang aman
             String dashboardPath;
             String role = user.getRole();
             
